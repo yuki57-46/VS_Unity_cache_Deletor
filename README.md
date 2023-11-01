@@ -1,0 +1,3 @@
+# Visual_Studio_chace_del
+
+Visual Studioで作業していたらプロジェクトフォルダの容量の大体を占めてしまうipchやBrowswe.VC.dbを半自動的に削除するプログラムです
