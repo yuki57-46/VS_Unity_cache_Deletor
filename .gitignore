@@ -1,2 +1,35 @@
-build/
+# Python specific
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
 
+# Virtual environment
+venv/
+env/
+
+# IDE specific
+.vscode/
+.idea/
+
+# Compiled files
+*.exe
+*.dll
+*.so
+*.pyd
+*.o
+*.obj
+
+# Logs and databases
+*.log
+*.sqlite
+*.db
+
+# OS specific
+.DS_Store
+Thumbs.db
+
+# PyInstaller specific
+dist/
+build/
+*.spec
