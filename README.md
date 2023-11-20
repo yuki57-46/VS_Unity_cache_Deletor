@@ -20,7 +20,7 @@ git clone https://github.com/yuki57-46/Visual_Studio_chace_del.git
 
 ## ライセンス
 
-特にありません
+特に無いと思います(後日確認ライブラリなどのライセンス)
 
 ## その他
 
