@@ -30,6 +30,5 @@ env/
 Thumbs.db
 
 # PyInstaller specific
-dist/
 build/
 *.spec
