@@ -2,6 +2,7 @@
 Visuals StudioのipchおよびBrowser.VC.db, Solution.VC.dbを削除するプログラム
 """
 # pylint: disable=W0611
+# pylint: disable=W0311
 
 import os
 import shutil
@@ -16,7 +17,7 @@ def write_file_path_to_text(folder_path, output_file_path):  # フォルダパ�
     フォルダ内のipchおよびBrowser.VC.dbのパスを指定したテキストファイルに書き出す
 
     Args:
-        folder_path (str): フォルダパス 
+        folder_path (str): フォルダパス
             (ex: C:/Users/user/Documents/Visual Studio projects)
         output_file_path (str): 出力ファイル名 (ex: output.txt)
 
@@ -60,10 +61,14 @@ def delete_file_path_from_list(list_txt_file):
         with open(list_txt_file, mode='r', encoding='utf-8') as file:  # 読み込みモード
             for line in file:
                 line = line.rstrip('\n')
-                if os.path.isfile(line):
-                    os.remove(line)
-                elif os.path.isdir(line):
-                    shutil.rmtree(line)
+                try:
+                    if os.path.isfile(line):
+                        os.remove(line)
+                    elif os.path.isdir(line):
+                        shutil.rmtree(line)
+                except PermissionError:
+                    # メッセージボックス
+                    messagebox.showerror("エラー", "以下のファイルが削除できませんでした \n" + line)
         # メッセージボックス
         messagebox.showinfo("完了", "削除しました")
         # txtファイル削除するかの確認
@@ -76,9 +81,8 @@ def delete_file_path_from_list(list_txt_file):
         # メッセージボックス
         messagebox.showerror("エラー", "output.txtが存在しません")
 
+
 # テキストファイルの内容を表示する
-
-
 def show_text_file(text_file):
     """
     テキストファイルの内容を表示する
@@ -117,7 +121,7 @@ if __name__ == "__main__":
     # ボタン
     button = tk.Button(root, text="フォルダ選択",
                        command=lambda:
-                       write_file_path_to_text(tk.filedialog.askdirectory(), OUTPUT_FILE_NAME))
+                       write_file_path_to_text(filedialog.askdirectory(), OUTPUT_FILE_NAME))
     button.pack()
     # ボタン
     button = tk.Button(root, text="出力されたテキストファイルを表示",
