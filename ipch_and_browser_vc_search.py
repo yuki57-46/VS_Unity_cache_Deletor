@@ -1,5 +1,10 @@
 """
 Visuals StudioのipchおよびBrowser.VC.db, Solution.VC.dbを削除するプログラム
+
+features:
+    - GitHubCopilotのキャッシュファイルを削除する
+        - チェックボックスで選択する
+    - Unityのプロジェクトフォルダ内をgitignoreの対象物を削除する
 """
 # pylint: disable=W0611
 # pylint: disable=W0311
@@ -10,9 +15,19 @@ import tkinter as tk
 from tkinter import messagebox, filedialog
 import custom_message_box as cmb
 
+# 定数
+# ファイル名
+OUTPUT_FILE_NAME = "output.txt"
+TARGET_FILES = ["Browse.VC.db", "Solution.VC.db"]
+TARGET_DIRS = ["ipch"]
+ADD_DIRS = [".vs"] # visual studioのキャッシュファイルを丸ごと削除する
+# Unityのプロジェクトフォルダ内をgitignoreの対象物を削除する
+UNITY_IGNORE_DIRS = ["Library", "Temp", "Obj", "Build", "Builds", "Logs", "UserSettings", ".gradle"]
+UNITY_IGNORE_FILES = ["*.csproj", "*.sln"]
+
 
 # ipch,Browser.VC.dbのパスを書き出す
-def write_file_path_to_text(folder_path, output_file_path):  # フォルダパス, 出力ファイル名
+def write_file_path_to_text(folder_path, output_file_path, vs_dir):  # フォルダパス, 出力ファイル名
     """
     フォルダ内のipchおよびBrowser.VC.dbのパスを指定したテキストファイルに書き出す
 
@@ -27,18 +42,21 @@ def write_file_path_to_text(folder_path, output_file_path):  # フォルダパ�
     if folder_path != "":  # フォルダパスが空でない場合
         with open(output_file_path, mode='w', encoding='utf-8') as file:  # 書き込みモード
             for _root, dirs, files in os.walk(folder_path):  # フォルダ内のファイルを走査
-                for file_name in files:  # ファイル名を取得
-                    # ディレクトリ名がipch,ファイル名がBrowse.VC.dbの場合
-                    if file_name == "Browse.VC.db":
-                        file_path = os.path.join(_root, file_name)
-                        file.write(file_path + "\n")
-                    if file_name == "Solution.VC.db":
-                        file_path = os.path.join(_root, file_name)
-                        file.write(file_path + "\n")
-                for dir_name in dirs:
-                    if dir_name == "ipch":
-                        file_path = os.path.join(_root, dir_name)
-                        file.write(file_path + "\n")
+                if vs_dir is False:
+                    for file_name in files:  # ファイル名を取得
+                        # ディレクトリ名がipch,ファイル名がBrowse.VC.dbの場合
+                            if file_name in TARGET_FILES:
+                                file_path = os.path.join(_root, file_name)
+                                file.write(file_path + "\n")
+                    for dir_name in dirs:
+                        if dir_name in TARGET_DIRS:
+                            file_path = os.path.join(_root, dir_name)
+                            file.write(file_path + "\n")
+                else:
+                    for dir_name in dirs:
+                        if dir_name in ADD_DIRS:
+                            file_path = os.path.join(_root, dir_name)
+                            file.write(file_path + "\n")
         # メッセージボックス
         messagebox.showinfo("完了", f"書き出しました \n 出力先: {output_file_path}")
     else:
@@ -106,9 +124,6 @@ def show_text_file(text_file):
 # メイン関数
 if __name__ == "__main__":
 
-    # 出力ファイル名
-    OUTPUT_FILE_NAME = "output.txt"
-
     # 画面サイズ
     root = tk.Tk()
     # 画面サイズ
@@ -118,10 +133,30 @@ if __name__ == "__main__":
     # ラベル
     label = tk.Label(root, text="フォルダを選択してください")
     label.pack()
+
+    # チェックボックス
+    vs_var = tk.BooleanVar()
+    vs_var.set(False)
+    vs_check = tk.Checkbutton(root, text=".vsフォルダを削除する",
+                           variable=vs_var)
+    vs_check.pack()
+    # チェックボックス
+    copilot_var = tk.BooleanVar()
+    copilot_var.set(False)
+    check = tk.Checkbutton(root, text="GitHubCopilotのキャッシュファイルを削除する(未実装)",
+                           variable=copilot_var)
+    check.pack()
+    # チェックボックス
+    unity_var = tk.BooleanVar()
+    unity_var.set(False)
+    check = tk.Checkbutton(root, text="Unityのプロジェクトの一時ファイルを削除する(未実装)",
+                           variable=unity_var)
+    check.pack()
+
     # ボタン
     button = tk.Button(root, text="フォルダ選択",
                        command=lambda:
-                       write_file_path_to_text(filedialog.askdirectory(), OUTPUT_FILE_NAME))
+                       write_file_path_to_text(filedialog.askdirectory(), OUTPUT_FILE_NAME, vs_var.get()))
     button.pack()
     # ボタン
     button = tk.Button(root, text="出力されたテキストファイルを表示",
