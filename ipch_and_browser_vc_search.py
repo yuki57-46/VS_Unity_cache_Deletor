@@ -27,7 +27,7 @@ UNITY_IGNORE_FILES = ["*.csproj", "*.sln"]
 
 
 # ipch,Browser.VC.dbのパスを書き出す
-def write_file_path_to_text(folder_path, output_file_path, vs_dir):  # フォルダパス, 出力ファイル名
+def write_file_path_to_text(folder_path, output_file_path, vs_check, unity_check):  # フォルダパス, 出力ファイル名, .vsフォルダを削除するかどうか
     """
     フォルダ内のipchおよびBrowser.VC.dbのパスを指定したテキストファイルに書き出す
 
@@ -35,6 +35,8 @@ def write_file_path_to_text(folder_path, output_file_path, vs_dir):  # フォル
         folder_path (str): フォルダパス
             (ex: C:/Users/user/Documents/Visual Studio projects)
         output_file_path (str): 出力ファイル名 (ex: output.txt)
+        vs_check (bool): .vsフォルダを削除するかどうか
+        unity_check (bool): Unityのプロジェクトフォルダ内を一時ファイルを削除するかどうか
 
     Returns:
         None: テキストファイルを書き出す
@@ -42,7 +44,7 @@ def write_file_path_to_text(folder_path, output_file_path, vs_dir):  # フォル
     if folder_path != "":  # フォルダパスが空でない場合
         with open(output_file_path, mode='w', encoding='utf-8') as file:  # 書き込みモード
             for _root, dirs, files in os.walk(folder_path):  # フォルダ内のファイルを走査
-                if vs_dir is False:
+                if vs_check is False:
                     for file_name in files:  # ファイル名を取得
                         # ディレクトリ名がipch,ファイル名がBrowse.VC.dbの場合
                             if file_name in TARGET_FILES:
@@ -57,6 +59,10 @@ def write_file_path_to_text(folder_path, output_file_path, vs_dir):  # フォル
                         if dir_name in ADD_DIRS:
                             file_path = os.path.join(_root, dir_name)
                             file.write(file_path + "\n")
+                if unity_check is True:
+                    # dir_nameをdirectory_pathとして渡す
+                    file_path = os.path.join(_root, dir_name)
+                    unity_cache_path_to_text(file_path, output_file_path)
         # メッセージボックス
         messagebox.showinfo("完了", f"書き出しました \n 出力先: {output_file_path}")
     else:
@@ -120,6 +126,71 @@ def show_text_file(text_file):
             text = text.replace("\n", "\n")
             return text
 
+def is_unity_project(directory_path):
+    """
+    Unityのプロジェクトディレクトリかどうかを判定する
+    """
+    require_files = ["ProjectSettings/ProjectVersion.txt", "Packages/manifest.json"]
+
+    # require_filesのファイルが存在するかどうかを確認する
+    for file in require_files:
+        if not os.path.isfile(os.path.join(directory_path, file)):
+            return False
+
+    return True
+
+def unity_cache_path_to_text(folder_path, output_file_path):
+    """
+    フォルダ内のUnityのキャッシュファイルのパスを指定したテキストファイルに書き出す
+
+    Args:
+        folder_path (str): フォルダパス
+            (ex: C:/Users/user/Documents/Unity projects)
+        output_file_path (str): 出力ファイル名 (ex: output.txt)
+
+    Returns:
+        None: テキストファイルを書き出す
+
+    Note:
+        Unityのキャッシュファイルは.gitignoreを参考にする
+        似たような構成を削除させないための防止策が必要であるため
+        .unityがプロジェクトフォルダのAssetsフォルダ内の何処かのディレクトリまたは直下にあると仮定する
+        .unityファイルが存在するということはUnityのプロジェクトフォルダであると推定できる
+        .unityファイルを基準に親ディレクトリに`.csproj`や`.sln`が存在するかを確認する
+        これらが存在する場合はUnityのプロジェクトフォルダとして扱う
+    """
+
+    if not is_unity_project(folder_path):
+        return
+
+    if folder_path != "": # フォルダパスが空でない場合
+        ignore_dirs = set() # 重複を防ぐためにsetを使用
+        with open(output_file_path, mode='a', encoding='utf-8') as file: # 追記モード
+            for _root, dirs, files in os.walk(folder_path):
+                # Unity/Hubの中身は削除しない
+                if "Unity/Hub" in _root.replace("\\", "/"):
+                    continue
+                # 一度対象になったディレクトリは再度対象にならないようにする
+                if any(ignored in _root for ignored in ignore_dirs):
+                    continue
+                for dir_name in dirs:
+                    if dir_name in UNITY_IGNORE_DIRS:
+                        # XR/Tempは削除しない XRフォルダを無視する
+                        if dir_name == "Temp" and "XR" in _root:
+                            continue
+
+                        ignore_dirs.add(os.path.join(_root, dir_name))
+
+                        file_path = os.path.join(_root, dir_name)
+                        file.write(file_path + "\n")
+                for file_name in files:
+                    if file_name in UNITY_IGNORE_FILES:
+                        file_path = os.path.join(_root, file_name)
+                        file.write(file_path + "\n")
+    else: # 何もしない
+        pass
+
+    return
 
 # メイン関数
 if __name__ == "__main__":
@@ -141,11 +212,11 @@ if __name__ == "__main__":
                            variable=vs_var)
     vs_check.pack()
     # チェックボックス
-    copilot_var = tk.BooleanVar()
-    copilot_var.set(False)
-    check = tk.Checkbutton(root, text="GitHubCopilotのキャッシュファイルを削除する(未実装)",
-                           variable=copilot_var)
-    check.pack()
+    # copilot_var = tk.BooleanVar()
+    # copilot_var.set(False)
+    # check = tk.Checkbutton(root, text="GitHubCopilotのキャッシュファイルを削除する(未実装)",
+    #                        variable=copilot_var)
+    # check.pack()
     # チェックボックス
     unity_var = tk.BooleanVar()
     unity_var.set(False)
@@ -156,7 +227,8 @@ if __name__ == "__main__":
     # ボタン
     button = tk.Button(root, text="フォルダ選択",
                        command=lambda:
-                       write_file_path_to_text(filedialog.askdirectory(), OUTPUT_FILE_NAME, vs_var.get()))
+                       write_file_path_to_text(filedialog.askdirectory(), OUTPUT_FILE_NAME,
+                       vs_var.get(), unity_var.get()))
     button.pack()
     # ボタン
     button = tk.Button(root, text="出力されたテキストファイルを表示",
