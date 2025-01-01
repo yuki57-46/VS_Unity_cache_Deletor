@@ -220,7 +220,7 @@ if __name__ == "__main__":
     # チェックボックス
     unity_var = tk.BooleanVar()
     unity_var.set(False)
-    check = tk.Checkbutton(root, text="Unityのプロジェクトの一時ファイルを削除する(未実装)",
+    check = tk.Checkbutton(root, text="Unityのプロジェクトの一時ファイルを削除する",
                            variable=unity_var)
     check.pack()
 

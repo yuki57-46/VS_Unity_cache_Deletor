@@ -32,3 +32,9 @@ Thumbs.db
 # PyInstaller specific
 build/
 *.spec
+
+dist/
+*.build/
+*.onefile-build/
+*.dist/
+dist/ipch_and_browser_vc_search.exe

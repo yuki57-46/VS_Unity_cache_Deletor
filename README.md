@@ -1,6 +1,12 @@
-# Visual_Studio_chace_del
+# VS_Unity_chace_del
+
+## 概要
 
 Visual Studioで作業していたらプロジェクトフォルダの容量の大体を占めてしまうipchやBrowswe.VC.dbを半自動的に削除するプログラムです
+
+オプションで`.vs`フォルダやUnityの一時ファイルも削除できます
+
+Unityプロジェクトの対象物は`Library`, `Temp`, `Obj`, `Build`, `Builds`, `Logs`, `UserSettings`, `.gradle`です。
 
 ## 使い方
 
@@ -20,11 +26,11 @@ git clone https://github.com/yuki57-46/Visual_Studio_chace_del.git
 
 ## ライセンス
 
-特に無いと思います(後日確認ライブラリなどのライセンス)
+特に無いです。ご自由にお使いください。
 
 ## その他
 
-- Python 3.12.0で作成しました
+- Python 3.12.8で作成しました
 - このプログラムは自己責任でお願いします
 - このプログラムを使用したことによるいかなる損害も補償しません
 - 改善点や要望があればissueに書いてください
