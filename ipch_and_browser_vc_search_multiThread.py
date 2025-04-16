@@ -9,11 +9,16 @@ features:
 # pylint: disable=W0611
 # pylint: disable=W0311
 
+from ast import pattern
+from asyncio import futures
+from importlib.metadata import requires
 import os
 import shutil
 import tkinter as tk
 from tkinter import messagebox, filedialog
+from unittest import result
 import custom_message_box as cmb
+import concurrent.futures
 import measure_time
 
 # 定数
@@ -44,33 +49,88 @@ def write_file_path_to_text(folder_path, output_file_path, vs_check, unity_check
         None: テキストファイルを書き出す
     """
     if folder_path != "":  # フォルダパスが空でない場合
-        with open(output_file_path, mode='w', encoding='utf-8') as file:  # 書き込みモード
-            for _root, dirs, files in os.walk(folder_path):  # フォルダ内のファイルを走査
-                if vs_check is False:
-                    for file_name in files:  # ファイル名を取得
-                        # ディレクトリ名がipch,ファイル名がBrowse.VC.dbの場合
-                            if file_name in TARGET_FILES:
-                                file_path = os.path.join(_root, file_name)
-                                file.write(file_path + "\n")
-                    for dir_name in dirs:
-                        if dir_name in TARGET_DIRS:
-                            file_path = os.path.join(_root, dir_name)
-                            file.write(file_path + "\n")
-                else:
-                    for dir_name in dirs:
-                        if dir_name in ADD_DIRS:
-                            file_path = os.path.join(_root, dir_name)
-                            file.write(file_path + "\n")
-                if unity_check is True:
-                    # dir_nameをdirectory_pathとして渡す
-                    file_path = os.path.join(_root, dir_name)
-                    unity_cache_path_to_text(file_path, output_file_path)
+        found_paths = []
+        # マルチスレッドで実行する
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            if vs_check:
+                # .vsフォルダを削除する
+                futures = [executor.submit(find_vs_folders, folder_path, ADD_DIRS)]
+            else:
+                # 通常のVSキャッシュファイル検索
+                futures = [executor.submit(find_target_files_and_dirs, folder_path, TARGET_FILES, TARGET_DIRS)]
+
+            # Unityのキャッシュファイル検索
+            if unity_check:
+                futures.append(executor.submit(find_unity_cache_files, folder_path))
+
         # メッセージボックス
         messagebox.showinfo("完了", f"書き出しました \n 出力先: {output_file_path}")
     else:
         # 何もしない
         pass
 
+# find_vs_folders関数
+def find_vs_folders(folder_path, add_dirs):
+    results = []
+    for root, dirs, _ in os.walk(folder_path):
+        for dir_name in dirs:
+            if dir_name in add_dirs:
+                results.append(os.path.join(root, dir_name))
+    return results
+
+# find_target_files_and_dirs関数
+def find_target_files_and_dirs(folder_path, target_files, target_dirs):
+    results = []
+    for root, dirs, files in os.walk(folder_path):
+        for file_name in files:
+            if file_name in target_files:
+                results.append(os.path.join(root, file_name))
+        for dir_name in dirs:
+            if dir_name in target_dirs:
+                results.append(os.path.join(root, dir_name))
+    return results
+
+def is_unity_project(directory_path):
+    """ Unityのプロジェクトディレクトリかどうかを判定する """
+    # すべてのファイルをチェックする前に、ProjectSettingsフォルダを確認する
+    if not os.path.isdir(os.path.join(directory_path, "ProjectSettings")):
+        return False
+
+    # 次に必須ファイルを確認する
+    required_files = ["ProjectSettings/ProjectVersion.txt", "Packages/manifest.json"]
+    return all(os.path.isfile(os.path.join(directory_path, file)) for file in required_files)
+
+def find_unity_cache_files(folder_path):
+    results = []
+    # Unityプロジェクトかどうかを確認する
+    if not is_unity_project(folder_path):
+        return results
+
+    # Unityのキャッシュファイルを検索する
+    ignore_dirs = set() # 重複を防ぐためにsetを使用
+    for root, dirs, files in os.walk(folder_path):
+        # Unity/Hubの中身は削除しない
+        if "Unity/Hub" in root.replace("\\", "/"):
+            continue
+
+        # 一度対象になったディレクトリは再度対象にならないようにする
+        if any(ignored in root for ignored in ignore_dirs):
+            continue
+
+        for dir_name in dirs:
+            if dir_name in UNITY_IGNORE_DIRS:
+                # XR/Tempは削除しない XRフォルダを無視する
+                if dir_name == "Temp" and "XR" in root:
+                    continue
+
+                ignore_dirs.add(os.path.join(root,dir_name))
+                results.append(os.path.join(root, dir_name))
+
+        for file_name in files:
+            if any(file_name.endswith(pattern.replace('*', '')) for pattern in UNITY_IGNORE_FILES):
+                results.append(os.path.join(root, file_name))
+
+    return results
 
 # ipch,Browser.VC.dbを削除する
 def delete_file_path_from_list(list_txt_file):
@@ -128,18 +188,7 @@ def show_text_file(text_file):
             text = text.replace("\n", "\n")
             return text
 
-def is_unity_project(directory_path):
-    """
-    Unityのプロジェクトディレクトリかどうかを判定する
-    """
-    require_files = ["ProjectSettings/ProjectVersion.txt", "Packages/manifest.json"]
 
-    # require_filesのファイルが存在するかどうかを確認する
-    for file in require_files:
-        if not os.path.isfile(os.path.join(directory_path, file)):
-            return False
-
-    return True
 
 def unity_cache_path_to_text(folder_path, output_file_path):
     """

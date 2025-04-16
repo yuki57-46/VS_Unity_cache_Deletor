@@ -38,3 +38,4 @@ dist/
 *.onefile-build/
 *.dist/
 dist/ipch_and_browser_vc_search.exe
+output.txt
