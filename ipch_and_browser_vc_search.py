@@ -66,7 +66,7 @@ def write_file_path_to_text(folder_path, output_file_path, vs_check, unity_check
                     file_path = os.path.join(_root, dir_name)
                     unity_cache_path_to_text(file_path, output_file_path)
         # メッセージボックス
-        #messagebox.showinfo("完了", f"書き出しました \n 出力先: {output_file_path}")
+        messagebox.showinfo("完了", f"書き出しました \n 出力先: {output_file_path}")
     else:
         # 何もしない
         pass

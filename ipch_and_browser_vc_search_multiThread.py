@@ -9,18 +9,21 @@ features:
 # pylint: disable=W0611
 # pylint: disable=W0311
 
-from operator import is_
+from ast import pattern
+from asyncio import futures
+from importlib.metadata import requires
 import os
 import shutil
 import tkinter as tk
 from tkinter import messagebox, filedialog
+from unittest import result
 import custom_message_box as cmb
 import concurrent.futures
 import measure_time
 
 # 定数
 # ファイル名
-OUTPUT_FILE_NAME = "output_multiThread.txt"
+OUTPUT_FILE_NAME = "output.txt"
 TARGET_FILES = ["Browse.VC.db", "Solution.VC.db"]
 TARGET_DIRS = ["ipch"]
 ADD_DIRS = [".vs"] # visual studioのキャッシュファイルを丸ごと削除する
@@ -58,22 +61,7 @@ def write_file_path_to_text(folder_path, output_file_path, vs_check, unity_check
 
             # Unityのキャッシュファイル検索
             if unity_check:
-                for root, dirs, _ in os.walk(folder_path):
-                    futures.append(executor.submit(find_unity_cache_files, root))
-
-            # 結果を取得
-            for future in concurrent.futures.as_completed(futures):
-                found_paths.extend(future.result())
-
-            # 重複を排除
-            found_paths = list(set(found_paths))
-
-            # パスの並び替え
-            found_paths.sort(key=sort_path_by_hierarchy)
-
-        # テキストファイルに書き出す
-        with open(output_file_path, mode='w', encoding='utf-8') as file:
-            file.writelines('\n'.join(found_paths))
+                futures.append(executor.submit(find_unity_cache_files, folder_path))
 
         # メッセージボックス
         messagebox.showinfo("完了", f"書き出しました \n 出力先: {output_file_path}")
@@ -114,7 +102,6 @@ def is_unity_project(directory_path):
 
 def find_unity_cache_files(folder_path):
     results = []
-
     # Unityプロジェクトかどうかを確認する
     if not is_unity_project(folder_path):
         return results
@@ -130,8 +117,6 @@ def find_unity_cache_files(folder_path):
         if any(ignored in root for ignored in ignore_dirs):
             continue
 
-        print(f"root: {root}")
-
         for dir_name in dirs:
             if dir_name in UNITY_IGNORE_DIRS:
                 # XR/Tempは削除しない XRフォルダを無視する
@@ -146,35 +131,6 @@ def find_unity_cache_files(folder_path):
                 results.append(os.path.join(root, file_name))
 
     return results
-
-def sort_path_by_hierarchy(path):
-    """
-    パスを階層ごとに並び替えるためのキー関数
-    Args:
-        path (str): ファイルパス
-    Returns:
-        tuple: ソートのためのキー
-    """
-
-    # パスを正規化して、ディレクトリ階層ごとにソート
-    normalized_path = os.path.normpath(path)
-    # Windowsの場合は\\を/に変換
-    parts = normalized_path.replace('\\', '/').split('/')
-
-    # ドライブ、プロジェクト、ファイルタイプの順でソート
-    drive = parts[0].lower() if len(parts) > 0 else ""
-    project_name = parts[1].lower() if len(parts) > 1 else ""
-
-    # パス階層の深さでさらに細かくソート
-    depth = len(parts)
-
-    # ファイル拡張子の種類でグルーピング
-    ext = os.path.splitext(path)[1].lower() if os.path.isfile(path) else "dir"
-
-    # ディレクトリかファイルかでソート (ディレクトリが先に来るようにする)
-    is_file = 1 if os.path.isfile(path) else 0
-
-    return (drive, project_name, is_file, depth, ext, path.lower())
 
 # ipch,Browser.VC.dbを削除する
 def delete_file_path_from_list(list_txt_file):
@@ -232,6 +188,60 @@ def show_text_file(text_file):
             text = text.replace("\n", "\n")
             return text
 
+
+
+def unity_cache_path_to_text(folder_path, output_file_path):
+    """
+    フォルダ内のUnityのキャッシュファイルのパスを指定したテキストファイルに書き出す
+
+    Args:
+        folder_path (str): フォルダパス
+            (ex: C:/Users/user/Documents/Unity projects)
+        output_file_path (str): 出力ファイル名 (ex: output.txt)
+
+    Returns:
+        None: テキストファイルを書き出す
+
+    Note:
+        Unityのキャッシュファイルは.gitignoreを参考にする
+        似たような構成を削除させないための防止策が必要であるため
+        .unityがプロジェクトフォルダのAssetsフォルダ内の何処かのディレクトリまたは直下にあると仮定する
+        .unityファイルが存在するということはUnityのプロジェクトフォルダであると推定できる
+        .unityファイルを基準に親ディレクトリに`.csproj`や`.sln`が存在するかを確認する
+        これらが存在する場合はUnityのプロジェクトフォルダとして扱う
+    """
+
+    if not is_unity_project(folder_path):
+        return
+
+    if folder_path != "": # フォルダパスが空でない場合
+        ignore_dirs = set() # 重複を防ぐためにsetを使用
+        with open(output_file_path, mode='a', encoding='utf-8') as file: # 追記モード
+            for _root, dirs, files in os.walk(folder_path):
+                # Unity/Hubの中身は削除しない
+                if "Unity/Hub" in _root.replace("\\", "/"):
+                    continue
+                # 一度対象になったディレクトリは再度対象にならないようにする
+                if any(ignored in _root for ignored in ignore_dirs):
+                    continue
+                for dir_name in dirs:
+                    if dir_name in UNITY_IGNORE_DIRS:
+                        # XR/Tempは削除しない XRフォルダを無視する
+                        if dir_name == "Temp" and "XR" in _root:
+                            continue
+
+                        ignore_dirs.add(os.path.join(_root, dir_name))
+
+                        file_path = os.path.join(_root, dir_name)
+                        file.write(file_path + "\n")
+                for file_name in files:
+                    if file_name in UNITY_IGNORE_FILES:
+                        file_path = os.path.join(_root, file_name)
+                        file.write(file_path + "\n")
+    else: # 何もしない
+        pass
+
+    return
 
 # メイン関数
 if __name__ == "__main__":
