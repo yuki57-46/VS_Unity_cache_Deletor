@@ -1,4 +1,4 @@
-# VS_Unity_chace_del
+# VS_Unity_cache_del
 
 ## 概要
 
@@ -13,7 +13,7 @@ Unityプロジェクトの対象物は`Library`, `Temp`, `Obj`, `Build`, `Builds
 1. このリポジトリをクローンする
 
 ```bash
-git clone https://github.com/yuki57-46/Visual_Studio_chace_del.git
+git clone https://github.com/yuki57-46/Visual_Studio_cache_del.git
 ```
 
 2. distフォルダにあるexeファイルを実行する
